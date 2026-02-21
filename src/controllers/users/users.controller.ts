@@ -13,7 +13,7 @@ import { UserService } from '../../repositories/user.service.js';
 import { CreateUserDto } from '../../models/create-user.dto.js';
 import { UpdateUserDto } from '../../models/update-user.dto.js';
 import { UserDto } from '../../models/user.dto.js';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 
 @ApiTags('users')
 @Controller({
@@ -56,6 +56,10 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Delete user' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'User deleted successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async delete(@Param('id') id: string): Promise<{ message: string }> {
     const deleted = await this.userService.delete(id);
     if (!deleted) {

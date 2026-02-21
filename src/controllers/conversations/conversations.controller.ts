@@ -17,7 +17,9 @@ import { ConversationDto } from '../../models/conversation.dto.js';
 import { AuthUserSyncService } from '../../repositories/auth-user-sync.service.js';
 import { UserData } from '../../fsarch/auth/decorators/user-data.decorator.js';
 import { User } from '../../fsarch/auth/user.js';
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam } from "@nestjs/swagger";
+import { MessageService } from '../../repositories/message.service.js';
+import { MessageDbo } from '../../models/message.dbo.js';
 
 @ApiTags('conversations')
 @Controller({
@@ -29,6 +31,7 @@ export class ConversationsController {
   constructor(
     private readonly conversationService: ConversationService,
     private readonly authUserSyncService: AuthUserSyncService,
+    private readonly messageService: MessageService,
   ) {}
 
   @Post()
@@ -54,7 +57,34 @@ export class ConversationsController {
       owner_user_id,
     };
 
-    return this.conversationService.create(dtoWithOwner);
+    const conversation = await this.conversationService.create(dtoWithOwner);
+
+    // Create initial message if provided
+    if (createConversationDto.initial_message) {
+      const initialMessage = createConversationDto.initial_message;
+      let author_user_id = initialMessage.author_user_id;
+
+      // Get or create user from token claims if not explicitly provided
+      if (!author_user_id && user.getClaims()) {
+        const syncedUser = await this.authUserSyncService.syncUserFromClaims(
+          user.getClaims()!,
+        );
+        if (syncedUser) {
+          author_user_id = syncedUser.id;
+        }
+      }
+
+      const messageDbo: MessageDbo = {
+        external_id: initialMessage.external_id ?? null,
+        conversation_id: conversation.id,
+        author_user_id: author_user_id ?? null,
+        content: initialMessage.content ?? null,
+      };
+
+      await this.messageService.create(messageDbo);
+    }
+
+    return conversation;
   }
 
   @Get()
@@ -77,6 +107,10 @@ export class ConversationsController {
   }
 
   @Put(':id')
+  @ApiOperation({ summary: 'Update conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 200, description: 'Conversation updated', type: ConversationDto })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
   async update(
     @Param('id') id: string,
     @Body() updateConversationDto: UpdateConversationDto,
@@ -89,6 +123,10 @@ export class ConversationsController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Delete conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 200, description: 'Conversation deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
   async delete(@Param('id') id: string): Promise<{ message: string }> {
     const deleted = await this.conversationService.delete(id);
     if (!deleted) {

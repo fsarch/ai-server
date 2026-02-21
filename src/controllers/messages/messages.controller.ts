@@ -17,7 +17,7 @@ import { AuthUserSyncService } from '../../repositories/auth-user-sync.service.j
 import { UserData } from '../../fsarch/auth/decorators/user-data.decorator.js';
 import { User } from '../../fsarch/auth/user.js';
 import { MessageDbo } from '../../models/message.dbo.js';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 
 @ApiTags('messages')
 @Controller({
@@ -95,6 +95,11 @@ export class MessagesController {
   }
 
   @Delete(':messageId')
+  @ApiOperation({ summary: 'Delete message' })
+  @ApiParam({ name: 'conversationId', description: 'Conversation ID' })
+  @ApiParam({ name: 'messageId', description: 'Message ID' })
+  @ApiResponse({ status: 200, description: 'Message deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Message not found' })
   async delete(
     @Param('conversationId') conversationId: string,
     @Param('messageId') messageId: string,
