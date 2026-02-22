@@ -39,6 +39,12 @@ export class AddConversationMessageUser1771705598671 implements MigrationInterfa
             isNullable: false,
           },
           {
+            name: 'is_bot',
+            type: 'boolean',
+            default: false,
+            isNullable: false,
+          },
+          {
             name: 'creation_time',
             type: 'timestamp with time zone',
             isNullable: false,

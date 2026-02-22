@@ -77,6 +77,11 @@ export class MessagesController {
   }
 
   @Put(':messageId')
+  @ApiOperation({ summary: 'Update message' })
+  @ApiParam({ name: 'conversationId', description: 'Conversation ID' })
+  @ApiParam({ name: 'messageId', description: 'Message ID' })
+  @ApiResponse({ status: 200, description: 'Message updated', type: MessageDto })
+  @ApiResponse({ status: 404, description: 'Message not found' })
   async update(
     @Param('conversationId') conversationId: string,
     @Param('messageId') messageId: string,

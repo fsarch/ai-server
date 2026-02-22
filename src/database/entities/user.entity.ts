@@ -19,6 +19,9 @@ export class User {
   @Column({ type: 'varchar', length: 1024 })
   short_name: string;
 
+  @Column({ type: 'boolean', default: false })
+  is_bot: boolean;
+
   @CreateDateColumn({ type: 'timestamp with time zone' })
   creation_time: Date;
 

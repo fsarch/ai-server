@@ -96,6 +96,7 @@ export class UserService {
       family_name: user.family_name,
       given_name: user.given_name,
       short_name: user.short_name,
+      is_bot: user.is_bot,
       creation_time: user.creation_time,
       deletion_time: user.deletion_time,
     };

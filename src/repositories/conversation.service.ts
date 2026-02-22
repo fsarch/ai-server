@@ -1,16 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Conversation } from '../database/entities/conversation.entity.js';
 import { CreateConversationDto } from '../models/create-conversation.dto.js';
 import { UpdateConversationDto } from '../models/update-conversation.dto.js';
 import { ConversationDto } from '../models/conversation.dto.js';
+import { UserDto } from '../models/user.dto.js';
+import { User } from '../database/entities/user.entity.js';
 
 @Injectable()
 export class ConversationService {
   constructor(
     @InjectRepository(Conversation)
     private conversationRepository: Repository<Conversation>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
   ) {}
 
   async create(createConversationDto: CreateConversationDto): Promise<ConversationDto> {
@@ -106,6 +110,67 @@ export class ConversationService {
     conversation.deletion_time = new Date();
     await this.conversationRepository.save(conversation);
     return true;
+  }
+
+  async findMembers(conversationId: string): Promise<UserDto[]> {
+    // Get all unique user IDs from messages in this conversation and the owner
+    const conversation = await this.conversationRepository.findOne({
+      where: { id: conversationId, deletion_time: null },
+    });
+
+    if (!conversation) {
+      return [];
+    }
+
+    const userIds = new Set<string>();
+
+    // Add owner if exists
+    if (conversation.owner_user_id) {
+      userIds.add(conversation.owner_user_id);
+    }
+
+    // Get all authors from messages in this conversation
+    const result = await this.conversationRepository
+      .createQueryBuilder('conversation')
+      .leftJoin('conversation.messages', 'message')
+      .select('DISTINCT message.author_user_id', 'author_user_id')
+      .where('conversation.id = :conversationId', { conversationId })
+      .andWhere('message.deletion_time IS NULL')
+      .andWhere('message.author_user_id IS NOT NULL')
+      .getRawMany();
+
+    result.forEach((row) => {
+      if (row.author_user_id) {
+        userIds.add(row.author_user_id);
+      }
+    });
+
+    if (userIds.size === 0) {
+      return [];
+    }
+
+    // Fetch all users
+    const users = await this.userRepository.find({
+      where: {
+        id: In(Array.from(userIds)),
+        deletion_time: null,
+      },
+    });
+
+    return users.map((user) => this.toUserDto(user));
+  }
+
+  private toUserDto(user: User): UserDto {
+    return {
+      id: user.id,
+      external_id: user.external_id,
+      family_name: user.family_name,
+      given_name: user.given_name,
+      short_name: user.short_name,
+      is_bot: user.is_bot,
+      creation_time: user.creation_time,
+      deletion_time: user.deletion_time,
+    };
   }
 
   private toDto(conversation: Conversation): ConversationDto {

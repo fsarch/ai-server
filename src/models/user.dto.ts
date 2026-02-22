@@ -16,6 +16,9 @@ export class UserDto {
   @ApiProperty({ maxLength: 1024 })
   short_name: string;
 
+  @ApiProperty({ default: false })
+  is_bot: boolean;
+
   @ApiProperty()
   creation_time: Date;
 

@@ -44,6 +44,10 @@ export class UsersController {
   }
 
   @Put(':id')
+  @ApiOperation({ summary: 'Update user' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'User updated', type: UserDto })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async update(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,

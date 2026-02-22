@@ -20,6 +20,7 @@ import { User } from '../../fsarch/auth/user.js';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam } from "@nestjs/swagger";
 import { MessageService } from '../../repositories/message.service.js';
 import { MessageDbo } from '../../models/message.dbo.js';
+import { UserDto } from '../../models/user.dto.js';
 
 @ApiTags('conversations')
 @Controller({
@@ -120,6 +121,19 @@ export class ConversationsController {
       throw new HttpException('Conversation not found', HttpStatus.NOT_FOUND);
     }
     return conversation;
+  }
+
+  @Get(':id/members')
+  @ApiOperation({ summary: 'Get all members (participants) of a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 200, description: 'List of conversation members', type: [UserDto] })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  async getMembers(@Param('id') id: string): Promise<UserDto[]> {
+    const conversation = await this.conversationService.findOne(id);
+    if (!conversation) {
+      throw new HttpException('Conversation not found', HttpStatus.NOT_FOUND);
+    }
+    return this.conversationService.findMembers(id);
   }
 
   @Delete(':id')

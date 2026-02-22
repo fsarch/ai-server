@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MinLength, MaxLength } from 'class-validator';
+import { IsString, IsOptional, MinLength, MaxLength, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateUserDto {
@@ -26,4 +26,9 @@ export class CreateUserDto {
   @MinLength(1)
   @MaxLength(255)
   short_name: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  is_bot?: boolean;
 }
