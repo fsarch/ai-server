@@ -5,6 +5,7 @@ export class UpdateConversationDto {
   @IsUUID()
   owner_user_id?: string;
 
+
   @IsOptional()
   @IsString()
   @MaxLength(255)

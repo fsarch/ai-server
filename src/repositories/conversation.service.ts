@@ -86,6 +86,7 @@ export class ConversationService {
       conversation.owner_user_id = updateConversationDto.owner_user_id;
     }
 
+
     if (updateConversationDto.name !== undefined) {
       conversation.name = updateConversationDto.name;
     }

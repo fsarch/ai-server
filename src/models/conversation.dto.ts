@@ -14,6 +14,7 @@ export class ConversationDto {
   @ApiPropertyOptional({ type: () => UserDto, nullable: true })
   owner_user?: UserDto | null;
 
+
   @ApiPropertyOptional({ maxLength: 255, nullable: true })
   name: string | null;
 

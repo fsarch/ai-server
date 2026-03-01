@@ -13,7 +13,9 @@ import { MessageService } from '../../repositories/message.service.js';
 import { CreateMessageDto } from '../../models/create-message.dto.js';
 import { UpdateMessageDto } from '../../models/update-message.dto.js';
 import { MessageDto } from '../../models/message.dto.js';
+import { CreateMessageResponseDto } from '../../models/create-message-response.dto.js';
 import { AuthUserSyncService } from '../../repositories/auth-user-sync.service.js';
+import { ConversationService } from '../../repositories/conversation.service.js';
 import { UserData } from '../../fsarch/auth/decorators/user-data.decorator.js';
 import { User } from '../../fsarch/auth/user.js';
 import { MessageDbo } from '../../models/message.dbo.js';
@@ -29,14 +31,21 @@ export class MessagesController {
   constructor(
     private readonly messageService: MessageService,
     private readonly authUserSyncService: AuthUserSyncService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   @Post()
+  @ApiOperation({ summary: 'Create message and get AI response' })
+  @ApiResponse({
+    status: 201,
+    description: 'Message created with AI response',
+    type: CreateMessageResponseDto,
+  })
   async create(
     @Param('conversationId') conversationId: string,
     @Body() createMessageDto: CreateMessageDto,
     @UserData() user: User,
-  ): Promise<MessageDto> {
+  ): Promise<CreateMessageResponseDto> {
     let author_user_id = createMessageDto.author_user_id;
 
     // Get or create user from token claims if not explicitly provided
@@ -56,7 +65,20 @@ export class MessagesController {
       content: createMessageDto.content ?? null,
     };
 
-    return this.messageService.create(messageDbo);
+    // Check if conversation exists
+    const conversation = await this.conversationService.findOne(conversationId);
+    if (!conversation) {
+      throw new HttpException('Conversation not found', HttpStatus.NOT_FOUND);
+    }
+
+    // Always generate AI response
+    const conversationMessages = await this.messageService.findByConversation(conversationId);
+    const messages = await this.messageService.createWithAiResponse(
+      messageDbo,
+      conversationMessages,
+    );
+
+    return { data: messages };
   }
 
   @Get()

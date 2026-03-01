@@ -19,6 +19,7 @@ export class Conversation {
   @JoinColumn({ name: 'owner_user_id' })
   owner_user: User | null;
 
+
   @Column({ type: 'varchar', length: 255, nullable: true })
   name: string | null;
 

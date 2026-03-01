@@ -8,7 +8,6 @@ import {
   Body,
   HttpException,
   HttpStatus,
-  UseGuards,
 } from '@nestjs/common';
 import { ConversationService } from '../../repositories/conversation.service.js';
 import { CreateConversationDto } from '../../models/create-conversation.dto.js';
@@ -82,7 +81,11 @@ export class ConversationsController {
         content: initialMessage.content ?? null,
       };
 
-      await this.messageService.create(messageDbo);
+      // Always generate AI response to initial message
+      await this.messageService.createWithAiResponse(
+        messageDbo,
+        [],
+      );
     }
 
     return conversation;

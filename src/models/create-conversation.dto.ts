@@ -1,7 +1,7 @@
 import { IsString, IsOptional, MaxLength, MinLength, IsUUID, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateMessageDto } from './create-message.dto.js';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateConversationDto {
   @ApiPropertyOptional({ maxLength: 1024 })
@@ -15,6 +15,7 @@ export class CreateConversationDto {
   @IsOptional()
   @IsUUID()
   owner_user_id?: string;
+
 
   @ApiPropertyOptional({ maxLength: 255 })
   @IsOptional()

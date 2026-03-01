@@ -89,6 +89,37 @@ export class UserService {
     return true;
   }
 
+  async getOrCreateBotUser(providerId: string, modelId: string, modelName: string): Promise<User> {
+    // Generate unique external_id for the bot user (based on provider and model ID)
+    // This stays stable even if the model name changes in config
+    const external_id = `bot:${providerId}:${modelId}`;
+
+    // Try to find existing bot user
+    const existingUser = await this.userRepository.findOne({
+      where: { external_id, is_bot: true, deletion_time: null },
+    });
+
+    if (existingUser) {
+      // Update name if it changed in config
+      if (existingUser.short_name !== modelName) {
+        existingUser.short_name = modelName;
+        return this.userRepository.save(existingUser);
+      }
+      return existingUser;
+    }
+
+    // Create new bot user
+    const botUser = this.userRepository.create({
+      external_id,
+      family_name: providerId,
+      given_name: modelId,
+      short_name: modelName,
+      is_bot: true,
+    });
+
+    return this.userRepository.save(botUser);
+  }
+
   private toDto(user: User): UserDto {
     return {
       id: user.id,
