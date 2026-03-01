@@ -14,6 +14,7 @@ import { CreateConversationDto } from '../../models/create-conversation.dto.js';
 import { UpdateConversationDto } from '../../models/update-conversation.dto.js';
 import { ConversationDto } from '../../models/conversation.dto.js';
 import { AuthUserSyncService } from '../../repositories/auth-user-sync.service.js';
+import { OpenAiService } from '../../repositories/openai.service.js';
 import { UserData } from '../../fsarch/auth/decorators/user-data.decorator.js';
 import { User } from '../../fsarch/auth/user.js';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam } from "@nestjs/swagger";
@@ -32,6 +33,7 @@ export class ConversationsController {
     private readonly conversationService: ConversationService,
     private readonly authUserSyncService: AuthUserSyncService,
     private readonly messageService: MessageService,
+    private readonly openAiService: OpenAiService,
   ) {}
 
   @Post()
@@ -51,13 +53,31 @@ export class ConversationsController {
       }
     }
 
-    // Add owner_user_id to the conversation
-    const dtoWithOwner = {
+    // Prepare conversation data
+    let conversationData = {
       ...createConversationDto,
       owner_user_id,
     };
 
-    const conversation = await this.conversationService.create(dtoWithOwner);
+    // Generate name and description from initial message if not provided
+    if (
+      createConversationDto.initial_message?.content &&
+      (!createConversationDto.name || !createConversationDto.description)
+    ) {
+      try {
+        const generated = await this.openAiService.generateConversationTitleAndDescription(
+          createConversationDto.initial_message.content,
+        );
+
+        conversationData.name = conversationData.name || generated.title;
+        conversationData.description = conversationData.description || generated.description;
+      } catch (error) {
+        // If generation fails, continue without auto-generated values
+        console.error('Failed to generate conversation title/description:', error);
+      }
+    }
+
+    const conversation = await this.conversationService.create(conversationData);
 
     // Create initial message if provided
     if (createConversationDto.initial_message) {
