@@ -71,15 +71,15 @@ export class OidcAuthService implements IAuthService {
       request['user'] = {
         id: jwtData.payload.sub,
       };
-
-      return new User({
-        accessToken: token,
-      });
     } catch (error) {
       console.debug('could not verify jwt', error);
 
       throw new AuthUnauthorizedException(error);
     }
+
+    return new User({
+      accessToken: token,
+    });
   }
 
   public async getWwwAuthenticateValue() {

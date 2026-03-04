@@ -31,15 +31,15 @@ export class StaticAuthService implements IAuthService {
       request['user'] = {
         id: payload.sub,
       };
-
-      return new User({
-        accessToken: token,
-      });
     } catch (error) {
       console.debug('could not verify jwt', error);
 
       throw new UnauthorizedException(error);
     }
+
+    return new User({
+      accessToken: token,
+    });
   }
 
   async signIn(

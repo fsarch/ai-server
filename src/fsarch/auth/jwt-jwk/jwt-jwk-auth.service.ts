@@ -1,7 +1,9 @@
 import {
+  HttpException, HttpStatus,
   Inject,
   Injectable,
   NotImplementedException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { IAuthService } from '../types/auth-service.type.js';
 import { Request } from 'express';
@@ -57,14 +59,14 @@ export class JwtJwkAuthService implements IAuthService {
       request['user'] = {
         id: jwtData.payload.sub,
       };
-
-      return new User({
-        accessToken: token,
-      });
     } catch (error) {
       console.debug('could not verify jwt', error);
 
       throw new AuthUnauthorizedException(error);
     }
+
+    return new User({
+      accessToken: token,
+    });
   }
 }
