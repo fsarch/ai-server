@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { Conversation } from '../database/entities/conversation.entity.js';
 import { CreateConversationDto } from '../models/create-conversation.dto.js';
 import { UpdateConversationDto } from '../models/update-conversation.dto.js';
@@ -31,7 +31,7 @@ export class ConversationService {
 
   async findAll(): Promise<ConversationDto[]> {
     const conversations = await this.conversationRepository.find({
-      where: { deletion_time: null },
+      where: { deletion_time: IsNull() },
       order: { creation_time: 'DESC' },
     });
 
@@ -41,10 +41,10 @@ export class ConversationService {
   async findAllVisible(ownerUserId: string | null): Promise<ConversationDto[]> {
     const where = ownerUserId
       ? [
-          { deletion_time: null, owner_user_id: null },
-          { deletion_time: null, owner_user_id: ownerUserId },
+          { deletion_time: IsNull(), owner_user_id: IsNull() },
+          { deletion_time: IsNull(), owner_user_id: ownerUserId },
         ]
-      : [{ deletion_time: null, owner_user_id: null }];
+      : [{ deletion_time: IsNull(), owner_user_id: IsNull() }];
 
     const conversations = await this.conversationRepository.find({
       where,
@@ -56,7 +56,7 @@ export class ConversationService {
 
   async findOne(id: string): Promise<ConversationDto | null> {
     const conversation = await this.conversationRepository.findOne({
-      where: { id, deletion_time: null },
+      where: { id, deletion_time: IsNull() },
     });
 
     return conversation ? this.toDto(conversation) : null;
@@ -64,7 +64,7 @@ export class ConversationService {
 
   async findByExternalId(externalId: string): Promise<ConversationDto | null> {
     const conversation = await this.conversationRepository.findOne({
-      where: { external_id: externalId, deletion_time: null },
+      where: { external_id: externalId, deletion_time: IsNull() },
     });
 
     return conversation ? this.toDto(conversation) : null;
@@ -75,7 +75,7 @@ export class ConversationService {
     updateConversationDto: UpdateConversationDto,
   ): Promise<ConversationDto | null> {
     const conversation = await this.conversationRepository.findOne({
-      where: { id, deletion_time: null },
+      where: { id, deletion_time: IsNull() },
     });
 
     if (!conversation) {
@@ -101,7 +101,7 @@ export class ConversationService {
 
   async delete(id: string): Promise<boolean> {
     const conversation = await this.conversationRepository.findOne({
-      where: { id, deletion_time: null },
+      where: { id, deletion_time: IsNull() },
     });
 
     if (!conversation) {
@@ -116,7 +116,7 @@ export class ConversationService {
   async findMembers(conversationId: string): Promise<UserDto[]> {
     // Get all unique user IDs from messages in this conversation and the owner
     const conversation = await this.conversationRepository.findOne({
-      where: { id: conversationId, deletion_time: null },
+      where: { id: conversationId, deletion_time: IsNull() },
     });
 
     if (!conversation) {
@@ -154,7 +154,7 @@ export class ConversationService {
     const users = await this.userRepository.find({
       where: {
         id: In(Array.from(userIds)),
-        deletion_time: null,
+        deletion_time: IsNull(),
       },
     });
 

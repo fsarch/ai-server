@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Message } from '../database/entities/message.entity.js';
 import { UpdateMessageDto } from '../models/update-message.dto.js';
 import { MessageDto } from '../models/message.dto.js';
@@ -141,7 +141,7 @@ export class MessageService {
 
   async findByConversation(conversationId: string): Promise<MessageDto[]> {
     const messages = await this.messageRepository.find({
-      where: { conversation_id: conversationId, deletion_time: null },
+      where: { conversation_id: conversationId, deletion_time: IsNull() },
       order: { creation_time: 'ASC' },
     });
 
@@ -150,7 +150,7 @@ export class MessageService {
 
   async findOne(id: string): Promise<MessageDto | null> {
     const message = await this.messageRepository.findOne({
-      where: { id, deletion_time: null },
+      where: { id, deletion_time: IsNull() },
     });
 
     return message ? this.toDto(message) : null;
@@ -158,7 +158,7 @@ export class MessageService {
 
   async findByExternalId(externalId: string): Promise<MessageDto | null> {
     const message = await this.messageRepository.findOne({
-      where: { external_id: externalId, deletion_time: null },
+      where: { external_id: externalId, deletion_time: IsNull() },
     });
 
     return message ? this.toDto(message) : null;
@@ -169,7 +169,7 @@ export class MessageService {
     updateMessageDto: UpdateMessageDto,
   ): Promise<MessageDto | null> {
     const message = await this.messageRepository.findOne({
-      where: { id, deletion_time: null },
+      where: { id, deletion_time: IsNull() },
     });
 
     if (!message) {
@@ -186,7 +186,7 @@ export class MessageService {
 
   async delete(id: string): Promise<boolean> {
     const message = await this.messageRepository.findOne({
-      where: { id, deletion_time: null },
+      where: { id, deletion_time: IsNull() },
     });
 
     if (!message) {

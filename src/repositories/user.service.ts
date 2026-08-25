@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { User } from '../database/entities/user.entity.js';
 import { CreateUserDto } from '../models/create-user.dto.js';
 import { UpdateUserDto } from '../models/update-user.dto.js';
@@ -27,7 +27,7 @@ export class UserService {
 
   async findAll(): Promise<UserDto[]> {
     const users = await this.userRepository.find({
-      where: { deletion_time: null },
+      where: { deletion_time: IsNull() },
       order: { creation_time: 'DESC' },
     });
 
@@ -36,7 +36,7 @@ export class UserService {
 
   async findOne(id: string): Promise<UserDto | null> {
     const user = await this.userRepository.findOne({
-      where: { id, deletion_time: null },
+      where: { id, deletion_time: IsNull() },
     });
 
     return user ? this.toDto(user) : null;
@@ -44,7 +44,7 @@ export class UserService {
 
   async findByExternalId(externalId: string): Promise<UserDto | null> {
     const user = await this.userRepository.findOne({
-      where: { external_id: externalId, deletion_time: null },
+      where: { external_id: externalId, deletion_time: IsNull() },
     });
 
     return user ? this.toDto(user) : null;
@@ -52,7 +52,7 @@ export class UserService {
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<UserDto | null> {
     const user = await this.userRepository.findOne({
-      where: { id, deletion_time: null },
+      where: { id, deletion_time: IsNull() },
     });
 
     if (!user) {
@@ -77,7 +77,7 @@ export class UserService {
 
   async delete(id: string): Promise<boolean> {
     const user = await this.userRepository.findOne({
-      where: { id, deletion_time: null },
+      where: { id, deletion_time: IsNull() },
     });
 
     if (!user) {
@@ -96,7 +96,7 @@ export class UserService {
 
     // Try to find existing bot user
     const existingUser = await this.userRepository.findOne({
-      where: { external_id, is_bot: true, deletion_time: null },
+      where: { external_id, is_bot: true, deletion_time: IsNull() },
     });
 
     if (existingUser) {
