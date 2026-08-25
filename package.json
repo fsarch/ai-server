@@ -28,7 +28,8 @@
     "migration:run": "npm run typeorm migration:run -- -d ./config/typeorm.js",
     "migration:generate": "npm run typeorm -- -d ./config/typeorm.js migration:generate ./src/database/migrations/",
     "migration:create": "npm run typeorm -- migration:create ./src/migrations/$npm_config_name",
-    "migration:revert": "npm run typeorm -- -d ./config/typeorm.js migration:revert"
+    "migration:revert": "npm run typeorm -- -d ./config/typeorm.js migration:revert",
+    "postversion": "git push && git push --tags"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
