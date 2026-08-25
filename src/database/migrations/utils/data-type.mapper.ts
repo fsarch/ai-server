@@ -28,7 +28,7 @@ export const getDataType = (
   if (
     driver !== 'cockroachdb' &&
     driver !== 'postgres' &&
-    driver !== 'sqlite'
+    driver !== 'better-sqlite3'
   ) {
     throw new Error('unsupported database type');
   }
