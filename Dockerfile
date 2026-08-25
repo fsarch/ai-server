@@ -1,5 +1,5 @@
 # Base
-FROM node:20.10.0-bullseye-slim AS base
+FROM node:24.14.1-trixie-slim AS base
 
 ENV PORT 8080
 
