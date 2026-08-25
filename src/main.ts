@@ -16,6 +16,6 @@ async function bootstrap() {
     .setDatabase(DATABASE_OPTIONS)
     .build();
 
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 8080);
 }
 bootstrap();
