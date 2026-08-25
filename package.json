@@ -31,6 +31,7 @@
     "migration:revert": "npm run typeorm -- -d ./config/typeorm.js migration:revert"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",

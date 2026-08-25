@@ -8,6 +8,7 @@ import { MessageService } from './message.service.js';
 import { UserService } from './user.service.js';
 import { AuthUserSyncService } from './auth-user-sync.service.js';
 import { OpenAiService } from './openai.service.js';
+import { McpProxyService } from './mcp-proxy.service.js';
 import configuration from '../fsarch/configuration/configuration.js';
 
 @Module({
@@ -22,8 +23,9 @@ import configuration from '../fsarch/configuration/configuration.js';
       useValue: configuration(),
     },
     OpenAiService,
+    McpProxyService,
   ],
-  exports: [ConversationService, MessageService, UserService, AuthUserSyncService, OpenAiService],
+  exports: [ConversationService, MessageService, UserService, AuthUserSyncService, OpenAiService, McpProxyService],
 })
 export class RepositoriesModule {}
 

@@ -2,6 +2,26 @@ import { Injectable, Logger, Inject } from '@nestjs/common';
 import OpenAI from 'openai';
 import type { ConfigType } from '../fsarch/configuration/config.type.js';
 
+export type OpenAiToolDefinition = {
+  name: string;
+  description?: string;
+  parameters: Record<string, unknown>;
+};
+
+export type OpenAiToolExecutor = (
+  name: string,
+  args: Record<string, unknown>,
+) => Promise<string>;
+
+export type GenerateResponseOptions = {
+  tools?: OpenAiToolDefinition[];
+  onToolCall?: OpenAiToolExecutor;
+};
+
+// Safety cap on the tool-call <-> tool-result round trips within a single generateResponse
+// call, so a model that keeps requesting tools can't loop forever.
+const MAX_TOOL_CALL_ITERATIONS = 5;
+
 @Injectable()
 export class OpenAiService {
   private readonly logger = new Logger(OpenAiService.name);
@@ -44,23 +64,95 @@ export class OpenAiService {
     );
   }
 
-  async generateResponse(messages: Array<{ role: string; content: string }>): Promise<string> {
+  /**
+   * Generates a chat response, optionally giving the model a set of tools (typically sourced
+   * from configured MCP servers) it can call via `onToolCall`. If the model requests a tool
+   * call, `onToolCall` is invoked, its result is fed back as a tool message, and the model is
+   * asked again - up to `MAX_TOOL_CALL_ITERATIONS` times - until it returns a final answer.
+   */
+  async generateResponse(
+    messages: Array<{ role: string; content: string }>,
+    options?: GenerateResponseOptions,
+  ): Promise<string> {
     if (!this.client) {
       throw new Error('OpenAI service not initialized');
     }
 
-    try {
-      const response = await this.client.chat.completions.create({
-        model: this.modelId!,
-        messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
-      });
+    const tools = options?.tools?.length
+      ? options.tools.map((tool) => ({
+          type: 'function' as const,
+          function: {
+            name: tool.name,
+            description: tool.description ?? '',
+            parameters: tool.parameters ?? { type: 'object', properties: {} },
+          },
+        }))
+      : undefined;
 
-      const content = response.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error('No response content from OpenAI');
+    // Loosely typed on purpose: assistant messages coming back from the API (which may carry
+    // tool_calls) and the tool-result messages we append are both fed back verbatim into the
+    // next request.
+    const conversation: any[] = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    try {
+      for (let iteration = 0; iteration < MAX_TOOL_CALL_ITERATIONS; iteration++) {
+        const response = await this.client.chat.completions.create({
+          model: this.modelId!,
+          messages: conversation,
+          ...(tools ? { tools } : {}),
+        });
+
+        const choice = response.choices[0];
+        const toolCalls = choice?.message?.tool_calls;
+
+        if (toolCalls && toolCalls.length > 0 && options?.onToolCall) {
+          conversation.push(choice.message);
+
+          for (const toolCall of toolCalls) {
+            if (toolCall.type !== 'function') {
+              continue;
+            }
+
+            let args: Record<string, unknown> = {};
+            try {
+              args = toolCall.function.arguments
+                ? JSON.parse(toolCall.function.arguments)
+                : {};
+            } catch {
+              args = {};
+            }
+
+            let resultContent: string;
+            try {
+              resultContent = await options.onToolCall(toolCall.function.name, args);
+            } catch (error) {
+              resultContent = `Error executing tool '${toolCall.function.name}': ${
+                error instanceof Error ? error.message : 'Unknown error'
+              }`;
+            }
+
+            conversation.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: resultContent,
+            });
+          }
+
+          continue;
+        }
+
+        const content = choice?.message?.content;
+        if (!content) {
+          throw new Error('No response content from OpenAI');
+        }
+
+        return content;
       }
 
-      return content;
+      throw new Error('Exceeded maximum tool call iterations');
     } catch (error) {
       this.logger.error(`Error calling OpenAI API: ${error}`);
       throw error;

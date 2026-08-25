@@ -1,20 +1,24 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Message } from '../database/entities/message.entity.js';
 import { UpdateMessageDto } from '../models/update-message.dto.js';
 import { MessageDto } from '../models/message.dto.js';
 import { MessageDbo } from '../models/message.dbo.js';
-import { OpenAiService } from './openai.service.js';
+import { OpenAiService, OpenAiToolDefinition } from './openai.service.js';
 import { UserService } from './user.service.js';
+import { McpProxyService } from './mcp-proxy.service.js';
 
 @Injectable()
 export class MessageService {
+  private readonly logger = new Logger(MessageService.name);
+
   constructor(
     @InjectRepository(Message)
     private messageRepository: Repository<Message>,
     private readonly openAiService: OpenAiService,
     private readonly userService: UserService,
+    private readonly mcpProxyService: McpProxyService,
   ) {}
 
   async create(messageDbo: MessageDbo): Promise<MessageDto> {
@@ -32,6 +36,7 @@ export class MessageService {
   async createWithAiResponse(
     messageDbo: MessageDbo,
     conversationMessages: MessageDto[],
+    accessToken?: string,
   ): Promise<MessageDto[]> {
     // Save user message
     const userMessage = await this.create(messageDbo);
@@ -48,9 +53,15 @@ export class MessageService {
       content: messageDbo.content || '',
     });
 
+    // Give the model access to the tools exposed by configured MCP servers, calling them
+    // with the requesting user's own token so downstream services enforce that user's
+    // permissions rather than a blanket service credential.
+    const { tools, executor } = await this.buildMcpTooling(accessToken);
+
     // Generate AI response
     const aiResponse = await this.openAiService.generateResponse(
       messagesForAi,
+      { tools, onToolCall: executor },
     );
 
     // Get or create bot user based on provider, model ID, and model name
@@ -70,6 +81,59 @@ export class MessageService {
     const aiMessage = await this.create(aiMessageDbo);
 
     return [userMessage, aiMessage];
+  }
+
+  /**
+   * Builds the OpenAI tool list and dispatcher for all configured MCP servers. Tool names
+   * are qualified as `<serverId>__<toolName>` to keep tools from different servers from
+   * colliding, and to let the executor route a call back to the right server.
+   */
+  private async buildMcpTooling(accessToken?: string): Promise<{
+    tools: OpenAiToolDefinition[];
+    executor: (name: string, args: Record<string, unknown>) => Promise<string>;
+  }> {
+    const headers: Record<string, string> = {};
+    if (accessToken) {
+      headers['authorization'] = `Bearer ${accessToken}`;
+    }
+
+    const servers = this.mcpProxyService.listConfiguredServers();
+    const toolMap = new Map<string, { serverId: string; toolName: string }>();
+    const tools: OpenAiToolDefinition[] = [];
+
+    for (const server of servers) {
+      const serverTools = await this.mcpProxyService.listTools(server.id, headers);
+      for (const tool of serverTools) {
+        const qualifiedName = `${server.id}__${tool.name}`
+          .replace(/[^a-zA-Z0-9_-]/g, '_')
+          .slice(0, 64);
+
+        if (toolMap.has(qualifiedName)) {
+          this.logger.warn(
+            `Skipping MCP tool '${tool.name}' from server '${server.id}': qualified name '${qualifiedName}' collides with another tool`,
+          );
+          continue;
+        }
+
+        toolMap.set(qualifiedName, { serverId: server.id, toolName: tool.name });
+        tools.push({
+          name: qualifiedName,
+          description: tool.description,
+          parameters: tool.inputSchema ?? { type: 'object', properties: {} },
+        });
+      }
+    }
+
+    const executor = async (name: string, args: Record<string, unknown>): Promise<string> => {
+      const target = toolMap.get(name);
+      if (!target) {
+        return `Unknown tool '${name}'`;
+      }
+
+      return this.mcpProxyService.callTool(target.serverId, target.toolName, args, headers);
+    };
+
+    return { tools, executor };
   }
 
   // ...existing code...

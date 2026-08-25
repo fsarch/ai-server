@@ -2,6 +2,20 @@ export type ConfigType = {
   auth: ConfigAuthType;
   uac: ConfigStaticUacType;
   database: ConfigDatabaseType;
+  mcp?: Array<ConfigMcpServerType>;
+};
+
+export type ConfigMcpServerType = {
+  id: string;
+  url: string;
+  auth?: ConfigMcpAuthType;
+};
+
+export type ConfigMcpAuthType = {
+  type: 'credential-propagation';
+} | {
+  type: 'bearer';
+  token: string;
 };
 
 export type ConfigAuthType = ConfigStaticAuthType | ConfigJwtJwkAuthType | ConfigOidcAuthType;

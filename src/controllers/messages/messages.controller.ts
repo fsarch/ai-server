@@ -76,6 +76,7 @@ export class MessagesController {
     const messages = await this.messageService.createWithAiResponse(
       messageDbo,
       conversationMessages,
+      user.getAccessToken(),
     );
 
     return { data: messages };
