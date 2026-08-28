@@ -1,4 +1,6 @@
+import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { Readable } from 'node:stream';
 import { NotFoundException, BadGatewayException } from '@nestjs/common';
 import { McpProxyService, resolveMcpTargetUrl } from './mcp-proxy.service.js';
@@ -111,31 +113,30 @@ describe('resolveMcpTargetUrl', () => {
   });
 });
 
+function createMockConfigService(mcpServers: unknown) {
+  return { get: (key: string) => (key === 'mcp' ? mcpServers : undefined) };
+}
+
 describe('McpProxyService', () => {
   let service: McpProxyService;
 
-  const mockConfig = {
-    auth: { type: 'static' as const, secret: 'test', users: [] },
-    uac: { type: 'static' as const, users: [] },
-    database: { type: 'sqlite' as const, database: ':memory:' },
-    mcp: [
-      {
-        id: 'test-server',
-        url: 'http://localhost:8080',
-        auth: {
-          type: 'bearer' as const,
-          token: 'test-token',
-        },
+  const mockMcpServers = [
+    {
+      id: 'test-server',
+      url: 'http://localhost:8080',
+      auth: {
+        type: 'bearer' as const,
+        token: 'test-token',
       },
-      {
-        id: 'proxy-server',
-        url: 'http://localhost:9090/.ai',
-        auth: {
-          type: 'credential-propagation' as const,
-        },
+    },
+    {
+      id: 'proxy-server',
+      url: 'http://localhost:9090/.ai',
+      auth: {
+        type: 'credential-propagation' as const,
       },
-    ],
-  };
+    },
+  ];
 
   let originalFetch: typeof fetch;
 
@@ -146,8 +147,8 @@ describe('McpProxyService', () => {
       providers: [
         McpProxyService,
         {
-          provide: 'CONFIG',
-          useValue: mockConfig,
+          provide: ConfigService,
+          useValue: createMockConfigService(mockMcpServers),
         },
       ],
     }).compile();
@@ -182,10 +183,7 @@ describe('McpProxyService', () => {
     });
 
     it('should handle missing mcp config', () => {
-      const emptyConfigService = new McpProxyService({
-        ...mockConfig,
-        mcp: undefined,
-      } as any);
+      const emptyConfigService = new McpProxyService(createMockConfigService(undefined) as any);
 
       expect(() => emptyConfigService.getMcpServer('test')).toThrow(NotFoundException);
     });
@@ -200,14 +198,14 @@ describe('McpProxyService', () => {
     });
 
     it('returns an empty array when none are configured', () => {
-      const emptyConfigService = new McpProxyService({ ...mockConfig, mcp: undefined } as any);
+      const emptyConfigService = new McpProxyService(createMockConfigService(undefined) as any);
       expect(emptyConfigService.listConfiguredServers()).toEqual([]);
     });
   });
 
   describe('proxyRequest', () => {
     it('resolves the target URL against the configured base path (regression: used to drop it)', async () => {
-      const fetchMock = jest.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+      const fetchMock = jest.fn<(...args: any[]) => any>().mockResolvedValue(new Response('{}', { status: 200 }));
       global.fetch = fetchMock as any;
 
       await service.proxyRequest('proxy-server', 'GET', '/mcp/endpoint', {});
@@ -219,7 +217,7 @@ describe('McpProxyService', () => {
     });
 
     it('applies bearer auth, overriding any client-supplied authorization header', async () => {
-      const fetchMock = jest.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+      const fetchMock = jest.fn<(...args: any[]) => any>().mockResolvedValue(new Response('{}', { status: 200 }));
       global.fetch = fetchMock as any;
 
       await service.proxyRequest('test-server', 'GET', '/mcp', { authorization: 'Bearer client-token' });
@@ -229,7 +227,7 @@ describe('McpProxyService', () => {
     });
 
     it('forwards the client authorization header unchanged for credential-propagation', async () => {
-      const fetchMock = jest.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+      const fetchMock = jest.fn<(...args: any[]) => any>().mockResolvedValue(new Response('{}', { status: 200 }));
       global.fetch = fetchMock as any;
 
       await service.proxyRequest('proxy-server', 'GET', '/mcp', { authorization: 'Bearer client-token' });
@@ -239,7 +237,7 @@ describe('McpProxyService', () => {
     });
 
     it('never sends a body for GET requests, even if one was passed', async () => {
-      const fetchMock = jest.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+      const fetchMock = jest.fn<(...args: any[]) => any>().mockResolvedValue(new Response('{}', { status: 200 }));
       global.fetch = fetchMock as any;
 
       await service.proxyRequest('test-server', 'GET', '/mcp', {}, { should: 'be dropped' });
@@ -249,7 +247,7 @@ describe('McpProxyService', () => {
     });
 
     it('serializes a body for POST requests', async () => {
-      const fetchMock = jest.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+      const fetchMock = jest.fn<(...args: any[]) => any>().mockResolvedValue(new Response('{}', { status: 200 }));
       global.fetch = fetchMock as any;
 
       await service.proxyRequest('test-server', 'POST', '/mcp', {}, { hello: 'world' });
@@ -259,7 +257,7 @@ describe('McpProxyService', () => {
     });
 
     it('streams the upstream response body through rather than buffering it', async () => {
-      const fetchMock = jest.fn().mockResolvedValue(
+      const fetchMock = jest.fn<(...args: any[]) => any>().mockResolvedValue(
         new Response(Readable.toWeb(Readable.from([Buffer.from('chunk-1'), Buffer.from('chunk-2')])) as any, {
           status: 200,
           headers: { 'content-type': 'text/event-stream' },
@@ -281,7 +279,7 @@ describe('McpProxyService', () => {
     });
 
     it('wraps a network failure in a BadGatewayException', async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error('connection refused')) as any;
+      global.fetch = jest.fn<(...args: any[]) => any>().mockRejectedValue(new Error('connection refused')) as any;
 
       await expect(service.proxyRequest('test-server', 'GET', '/mcp', {})).rejects.toThrow(
         BadGatewayException,
@@ -324,7 +322,7 @@ describe('McpProxyService', () => {
     });
 
     it('returns an empty list instead of throwing when the server is unreachable', async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error('ECONNREFUSED')) as any;
+      global.fetch = jest.fn<(...args: any[]) => any>().mockRejectedValue(new Error('ECONNREFUSED')) as any;
 
       await expect(service.listTools('test-server', {})).resolves.toEqual([]);
     });
@@ -353,7 +351,7 @@ describe('McpProxyService', () => {
     });
 
     it('propagates an error when the server cannot be reached', async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error('ECONNREFUSED')) as any;
+      global.fetch = jest.fn<(...args: any[]) => any>().mockRejectedValue(new Error('ECONNREFUSED')) as any;
 
       await expect(service.callTool('test-server', 'find_part', {}, {})).rejects.toThrow();
     });

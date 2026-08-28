@@ -15,8 +15,7 @@ import { UpdateConversationDto } from '../../models/update-conversation.dto.js';
 import { ConversationDto } from '../../models/conversation.dto.js';
 import { AuthUserSyncService } from '../../repositories/auth-user-sync.service.js';
 import { OpenAiService } from '../../repositories/openai.service.js';
-import { UserData } from '../../fsarch/auth/decorators/user-data.decorator.js';
-import { User } from '../../fsarch/auth/user.js';
+import { UserData, User } from '@fsarch/server/auth';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam } from "@nestjs/swagger";
 import { MessageService } from '../../repositories/message.service.js';
 import { MessageDbo } from '../../models/message.dbo.js';
@@ -44,10 +43,8 @@ export class ConversationsController {
     let owner_user_id = createConversationDto.owner_user_id;
 
     // Get or create user from token claims if not explicitly provided
-    if (!owner_user_id && user.getClaims()) {
-      const syncedUser = await this.authUserSyncService.syncUserFromClaims(
-        user.getClaims()!,
-      );
+    if (!owner_user_id) {
+      const syncedUser = await this.authUserSyncService.syncUserFromClaims(user);
       if (syncedUser) {
         owner_user_id = syncedUser.id;
       }
@@ -85,10 +82,8 @@ export class ConversationsController {
       let author_user_id = initialMessage.author_user_id;
 
       // Get or create user from token claims if not explicitly provided
-      if (!author_user_id && user.getClaims()) {
-        const syncedUser = await this.authUserSyncService.syncUserFromClaims(
-          user.getClaims()!,
-        );
+      if (!author_user_id) {
+        const syncedUser = await this.authUserSyncService.syncUserFromClaims(user);
         if (syncedUser) {
           author_user_id = syncedUser.id;
         }
@@ -113,10 +108,7 @@ export class ConversationsController {
 
   @Get()
   async findAll(@UserData() user: User): Promise<ConversationDto[]> {
-    const claims = user.getClaims();
-    const ownerUserId = claims
-      ? await this.authUserSyncService.findUserIdFromClaims(claims)
-      : null;
+    const ownerUserId = await this.authUserSyncService.findUserIdFromClaims(user);
 
     return this.conversationService.findAllVisible(ownerUserId);
   }

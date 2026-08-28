@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { MessageService } from './message.service.js';
@@ -10,25 +11,25 @@ describe('MessageService', () => {
   let service: MessageService;
 
   const mockRepository = {
-    create: jest.fn((data) => data),
-    save: jest.fn((entity) => Promise.resolve({ id: 'msg-1', creation_time: new Date(), deletion_time: null, ...entity })),
+    create: jest.fn((data: any) => data),
+    save: jest.fn((entity: any) => Promise.resolve({ id: 'msg-1', creation_time: new Date(), deletion_time: null, ...entity })),
   };
 
   const mockOpenAiService = {
-    generateResponse: jest.fn().mockResolvedValue('ai response'),
-    getProviderId: jest.fn().mockReturnValue('provider-1'),
-    getModelId: jest.fn().mockReturnValue('model-1'),
-    getModelName: jest.fn().mockReturnValue('Model One'),
+    generateResponse: jest.fn<(...args: any[]) => any>().mockResolvedValue('ai response'),
+    getProviderId: jest.fn<(...args: any[]) => any>().mockReturnValue('provider-1'),
+    getModelId: jest.fn<(...args: any[]) => any>().mockReturnValue('model-1'),
+    getModelName: jest.fn<(...args: any[]) => any>().mockReturnValue('Model One'),
   };
 
   const mockUserService = {
-    getOrCreateBotUser: jest.fn().mockResolvedValue({ id: 'bot-1' }),
+    getOrCreateBotUser: jest.fn<(...args: any[]) => any>().mockResolvedValue({ id: 'bot-1' }),
   };
 
   const mockMcpProxyService = {
-    listConfiguredServers: jest.fn().mockReturnValue([]),
-    listTools: jest.fn().mockResolvedValue([]),
-    callTool: jest.fn(),
+    listConfiguredServers: jest.fn<(...args: any[]) => any>().mockReturnValue([]),
+    listTools: jest.fn<(...args: any[]) => any>().mockResolvedValue([]),
+    callTool: jest.fn<(...args: any[]) => any>(),
   };
 
   beforeEach(async () => {

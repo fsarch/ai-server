@@ -1,10 +1,13 @@
+import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Readable } from 'node:stream';
 import { PassThrough } from 'node:stream';
 import * as supertest from 'supertest';
 
-const request = (supertest as unknown as { default?: typeof supertest }).default ?? supertest;
+// The CJS/ESM interop shape of `supertest`'s types doesn't line up with how it actually
+// loads here, so fall back to `any` rather than fighting the type checker over test infra.
+const request: any = (supertest as any).default ?? supertest;
 import { McpProxyController } from './mcp-proxy.controller.js';
 import { McpProxyService } from '../../repositories/mcp-proxy.service.js';
 
@@ -20,8 +23,8 @@ function createMockRes() {
   const res: any = Object.assign(stream, {
     statusCode: 200,
     headersSent: false,
-    setHeader: jest.fn(),
-    json: jest.fn(),
+    setHeader: jest.fn<(...args: any[]) => any>(),
+    json: jest.fn<(...args: any[]) => any>(),
   });
   res.status = jest.fn((code: number) => {
     res.statusCode = code;
@@ -35,7 +38,7 @@ describe('McpProxyController', () => {
   let controller: McpProxyController;
 
   const mockMcpProxyService = {
-    proxyRequest: jest.fn(),
+    proxyRequest: jest.fn<(...args: any[]) => any>(),
   };
 
   beforeEach(async () => {

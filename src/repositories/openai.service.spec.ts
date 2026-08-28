@@ -1,19 +1,21 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { jest } from '@jest/globals';
 import { OpenAiService } from './openai.service.js';
 
-function createService(create: jest.Mock): OpenAiService {
-  const config = {
-    providers: [
-      {
-        id: 'openai-provider',
-        type: 'open-ai',
-        api_key: 'test-key',
-        models: [{ id: 'gpt-test', name: 'GPT Test' }],
-      },
-    ],
-  };
+function createMockConfigService(providers: unknown) {
+  return { get: (key: string) => (key === 'providers' ? providers : undefined) };
+}
 
-  const service = new OpenAiService(config as any);
+function createService(create: jest.Mock<(...args: any[]) => any>): OpenAiService {
+  const providers = [
+    {
+      id: 'openai-provider',
+      type: 'open-ai',
+      api_key: 'test-key',
+      models: [{ id: 'gpt-test', name: 'GPT Test' }],
+    },
+  ];
+
+  const service = new OpenAiService(createMockConfigService(providers) as any);
   // Swap in a fake OpenAI client so no real network calls happen; initializeClient() above
   // already set modelId/providerId/modelName from the config.
   (service as any).client = { chat: { completions: { create } } };
@@ -26,14 +28,14 @@ function completion(message: Partial<{ content: string | null; tool_calls: any[]
 
 describe('OpenAiService', () => {
   it('throws if the client was never initialized (e.g. no provider configured)', async () => {
-    const service = new OpenAiService({ providers: [] } as any);
+    const service = new OpenAiService(createMockConfigService([]) as any);
     await expect(service.generateResponse([{ role: 'user', content: 'hi' }])).rejects.toThrow(
       'OpenAI service not initialized',
     );
   });
 
   it('returns the plain content when the model does not call a tool', async () => {
-    const create = jest.fn().mockResolvedValue(completion({ content: 'Hello there' }));
+    const create = jest.fn<(...args: any[]) => any>().mockResolvedValue(completion({ content: 'Hello there' }));
     const service = createService(create);
 
     const result = await service.generateResponse([{ role: 'user', content: 'hi' }]);
@@ -44,7 +46,7 @@ describe('OpenAiService', () => {
   });
 
   it('includes the given tools in the request payload', async () => {
-    const create = jest.fn().mockResolvedValue(completion({ content: 'done' }));
+    const create = jest.fn<(...args: any[]) => any>().mockResolvedValue(completion({ content: 'done' }));
     const service = createService(create);
 
     await service.generateResponse([{ role: 'user', content: 'hi' }], {
@@ -61,7 +63,7 @@ describe('OpenAiService', () => {
 
   it('dispatches a tool call via onToolCall and feeds the result back for a final answer', async () => {
     const create = jest
-      .fn()
+      .fn<(...args: any[]) => any>()
       .mockResolvedValueOnce(
         completion({
           content: null,
@@ -76,7 +78,7 @@ describe('OpenAiService', () => {
       )
       .mockResolvedValueOnce(completion({ content: 'final answer' }));
     const service = createService(create);
-    const onToolCall = jest.fn().mockResolvedValue('tool result text');
+    const onToolCall = jest.fn<(...args: any[]) => any>().mockResolvedValue('tool result text');
 
     const result = await service.generateResponse([{ role: 'user', content: 'hi' }], {
       tools: [{ name: 'my_tool', parameters: { type: 'object' } }],
@@ -97,7 +99,7 @@ describe('OpenAiService', () => {
 
   it('feeds an error message back to the model when the tool executor throws', async () => {
     const create = jest
-      .fn()
+      .fn<(...args: any[]) => any>()
       .mockResolvedValueOnce(
         completion({
           content: null,
@@ -108,7 +110,7 @@ describe('OpenAiService', () => {
       )
       .mockResolvedValueOnce(completion({ content: 'recovered' }));
     const service = createService(create);
-    const onToolCall = jest.fn().mockRejectedValue(new Error('downstream unavailable'));
+    const onToolCall = jest.fn<(...args: any[]) => any>().mockRejectedValue(new Error('downstream unavailable'));
 
     const result = await service.generateResponse([{ role: 'user', content: 'hi' }], {
       tools: [{ name: 'my_tool', parameters: { type: 'object' } }],
@@ -122,7 +124,7 @@ describe('OpenAiService', () => {
   });
 
   it('gives up after too many tool-call round trips instead of looping forever', async () => {
-    const create = jest.fn().mockResolvedValue(
+    const create = jest.fn<(...args: any[]) => any>().mockResolvedValue(
       completion({
         content: null,
         tool_calls: [
@@ -131,7 +133,7 @@ describe('OpenAiService', () => {
       }),
     );
     const service = createService(create);
-    const onToolCall = jest.fn().mockResolvedValue('result');
+    const onToolCall = jest.fn<(...args: any[]) => any>().mockResolvedValue('result');
 
     await expect(
       service.generateResponse([{ role: 'user', content: 'hi' }], {

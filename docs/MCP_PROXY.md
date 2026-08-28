@@ -110,7 +110,7 @@ Für Initialize-Handshake, Session-Handling (`Mcp-Session-Id`) und SSE-Parsing w
 - `src/controllers/mcp-proxy/mcp-proxy.module.ts` - NestJS Module
 - `src/repositories/openai.service.ts` - `generateResponse` mit Tool-Call-Loop
 - `src/repositories/message.service.ts` - baut Tool-Liste & Dispatcher pro Chat-Nachricht
-- `src/fsarch/configuration/config.type.ts` - Konfigurationstypen (erweitert um MCP)
+- `src/repositories/mcp-proxy.service.ts` / `src/repositories/openai.service.ts` - definieren die app-spezifischen Config-Typen (`mcp`/`providers`) und lesen sie über Nest's `ConfigService`
 
 ### Testing
 

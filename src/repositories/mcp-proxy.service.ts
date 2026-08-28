@@ -1,7 +1,19 @@
-import { Injectable, Inject, Logger, NotFoundException, BadGatewayException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadGatewayException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { ConfigType, ConfigMcpServerType } from '../fsarch/configuration/config.type.js';
+
+// Application-specific config section (the `mcp:` key in config.yaml) - not part of
+// @fsarch/server's own config type, which only covers auth/uac/database/tracing.
+export type ConfigMcpServerType = {
+  id: string;
+  url: string;
+  auth?: ConfigMcpAuthType;
+};
+
+export type ConfigMcpAuthType =
+  | { type: 'credential-propagation' }
+  | { type: 'bearer'; token: string };
 
 /**
  * Resolves a request path against the configured base URL of an MCP server.
@@ -36,10 +48,10 @@ const METHODS_WITHOUT_BODY = new Set(['GET', 'HEAD']);
 export class McpProxyService {
   private readonly logger = new Logger(McpProxyService.name);
 
-  constructor(@Inject('CONFIG') private readonly config: ConfigType) {}
+  constructor(private readonly configService: ConfigService) {}
 
   listConfiguredServers(): ConfigMcpServerType[] {
-    return this.config.mcp || [];
+    return this.configService.get<ConfigMcpServerType[]>('mcp') || [];
   }
 
   getMcpServer(id: string): ConfigMcpServerType {

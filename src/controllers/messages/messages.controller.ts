@@ -16,8 +16,7 @@ import { MessageDto } from '../../models/message.dto.js';
 import { CreateMessageResponseDto } from '../../models/create-message-response.dto.js';
 import { AuthUserSyncService } from '../../repositories/auth-user-sync.service.js';
 import { ConversationService } from '../../repositories/conversation.service.js';
-import { UserData } from '../../fsarch/auth/decorators/user-data.decorator.js';
-import { User } from '../../fsarch/auth/user.js';
+import { UserData, User } from '@fsarch/server/auth';
 import { MessageDbo } from '../../models/message.dbo.js';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 
@@ -49,10 +48,8 @@ export class MessagesController {
     let author_user_id = createMessageDto.author_user_id;
 
     // Get or create user from token claims if not explicitly provided
-    if (!author_user_id && user.getClaims()) {
-      const syncedUser = await this.authUserSyncService.syncUserFromClaims(
-        user.getClaims()!,
-      );
+    if (!author_user_id) {
+      const syncedUser = await this.authUserSyncService.syncUserFromClaims(user);
       if (syncedUser) {
         author_user_id = syncedUser.id;
       }

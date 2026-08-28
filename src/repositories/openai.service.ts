@@ -1,6 +1,15 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import type { ConfigType } from '../fsarch/configuration/config.type.js';
+
+// Application-specific config section (the `providers:` key in config.yaml) - not part of
+// @fsarch/server's own config type.
+export type OpenAiProviderConfigType = {
+  type: 'open-ai';
+  id: string;
+  api_key: string;
+  models: Array<{ id: string; name: string }>;
+};
 
 export type OpenAiToolDefinition = {
   name: string;
@@ -30,14 +39,14 @@ export class OpenAiService {
   private modelName: string | null = null;
   private providerId: string | null = null;
 
-  constructor(@Inject('CONFIG') private readonly config: ConfigType) {
+  constructor(private readonly configService: ConfigService) {
     this.initializeClient();
   }
 
   private initializeClient(): void {
     // Read first provider configuration
-    const providers = (this.config as any).providers || [];
-    const openaiProvider = providers.find((p: any) => p.type === 'open-ai');
+    const providers = this.configService.get<OpenAiProviderConfigType[]>('providers') || [];
+    const openaiProvider = providers.find((p) => p.type === 'open-ai');
 
     if (!openaiProvider) {
       this.logger.warn('No OpenAI provider configured');

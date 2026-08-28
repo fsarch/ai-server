@@ -9,7 +9,6 @@ import { UserService } from './user.service.js';
 import { AuthUserSyncService } from './auth-user-sync.service.js';
 import { OpenAiService } from './openai.service.js';
 import { McpProxyService } from './mcp-proxy.service.js';
-import configuration from '../fsarch/configuration/configuration.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Conversation, Message, User])],
@@ -18,14 +17,9 @@ import configuration from '../fsarch/configuration/configuration.js';
     MessageService,
     UserService,
     AuthUserSyncService,
-    {
-      provide: 'CONFIG',
-      useValue: configuration(),
-    },
     OpenAiService,
     McpProxyService,
   ],
   exports: [ConversationService, MessageService, UserService, AuthUserSyncService, OpenAiService, McpProxyService],
 })
 export class RepositoriesModule {}
-
